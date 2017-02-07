@@ -1,11 +1,3 @@
-mix phoenix.new blog
-cd blog
-mix ecto.create
-mix phoenix.gen.html Post posts title:string body:text
-add routes to router.ex file (resources "/posts", PostController)
-mix ecto.migrate (generates the table)
-mix phoenix.server
-
 So we have already covered the basics to get your phoenix server up and running:
 ```bash
 $ mix phoenix.new blog
@@ -13,7 +5,7 @@ $ cd blog
 $ mix ecto.create
 ```
 
-We are going to use the phoenix generators to generate some routes, controllers, views and postgres tables needed to create a blogging platform.  There will be a lot of magic.
+We are going to use the phoenix generators to generate some routes, controllers, views and postgres tables needed to create a blogging platform. There will be a lot of magic.
 
 
 Since we are creating a blogging platform, we will need a `posts` table, which has two columns: `title` & `body`. `Post` (singular) will be used to generate the files and module. In the terminal, run:
@@ -37,8 +29,16 @@ Running this command will create the following files:
 * creating priv/repo/migrations/20170206141541_create_post.exs
 ```
 
-We will be covering a few of them in this README
+We will be covering a few of them in this README but first we will be starting with a file you should already have, `web/router.ex`. You will need to paste in the following code `resources "/posts", PostController`. It should look something like this
 
+```elixir
+scope "/", BlogPhoenix do
+  pipe_through :browser # Use the default browser stack
+
+  get "/", PageController, :index
+  resources "/posts", PostController
+end
+```
 
 Next we need to create our new table in postgres. in the terminal run:
 ```bash
@@ -49,8 +49,8 @@ ____________________
 
 ## Adding draft functionality
 
-Add a draft checkbox to the form:
-edit /web/templates/post/form.html add checkbox field
+Now we can start editing some of the newly created files. We can start by adding a draft checkbox to the form:
+edit `/web/templates/post/form.html` add checkbox field
 
 ```html
   <div class="draft">
@@ -60,7 +60,7 @@ edit /web/templates/post/form.html add checkbox field
   </div>
 ```
 
-Now we can go to localhost:4000/posts/new and should be able to see the draft checkbox. If we tick the checkbox, and add a title and body, and press submit then in the terminal you should see that the draft key value pair is in the form's payload, but it is not added to the database.
+Now we can go to `localhost:4000/posts/new` and should be able to see the draft checkbox. If we tick the checkbox, add a title and body, and press submit then in the terminal you should see that the draft key value pair is in the form's payload, but it is not added to the database.
 
 ```elixir
 "post" => %{"body" => "A body", "draft" => "true", "title" => "A title"}
@@ -68,7 +68,7 @@ Now we can go to localhost:4000/posts/new and should be able to see the draft ch
 
 In order to add the new column to our posts table, we need to edit our schema, and perform a migration.
 
-In web/models/post.ex
+In `web/models/post.ex`
 - we want to add to our schema,
 ```elixir
 schema "posts" do
@@ -92,7 +92,7 @@ In the terminal, type:
 ```bash
 $ mix ecto.gen.migration add_drafts_to_posts
 ```
-This will create a new file in priv/repo/migrations with a time stamp, and the add_drafts_to_posts name. Inside this file, we want instruct postgres to alter our table. Update the `change` function definition:
+This will create a new file in `priv/repo/migrations` with a time stamp, and the add_drafts_to_posts name. Inside this file, we want instruct postgres to alter our table. Update the `change` function definition:
 
 ```elixir
 def change do
@@ -110,7 +110,7 @@ Now we need to implement that change on our database by running
 $ mix ecto.migrate
 ```
 
-Great, our table has been altered to allow for a `draft` entry. If we go through the flow of creating a new draft post, we can see the following line in the terminal after pressing submit:
+Great, our table has been altered to allow for a `draft` entry. If we go through the flow of creating a new draft post again, we can see the following line in the terminal after pressing submit:
 
 ```sql
 INSERT INTO "posts"
@@ -119,9 +119,9 @@ INSERT INTO "posts"
   RETURNING "id" ["jackem", true, "hey", {...}]
 ```
 
-So now we are storing the `draft` key in our database, we just need to display it on the front end.
+Now that we are storing the `draft` key in our database, we just need to display it on the front end.
 
-In `web/templates/post/index.html.eex` we want to add a new `Draft` heading and the boolean value for each post, so add the following lines:
+In `web/templates/post/index.html.eex` we want to add a new `Draft` heading and the boolean value for each post, so add the following lines in their respective places:
 
 ```html
 <th>Draft</th>
@@ -136,7 +136,13 @@ We also want to add this new info the the individual post view which is in the `
   </li>
 ```
 
-Now you should be able to take a look around with your new draft functionality. We will next add a new endpoint that lists only the drafts.
+Now you should be able to take a look around with your new draft functionality.
+
+____________________
+
+## Adding a new route (optional)
+
+We will next add a new endpoint that lists only the drafts.
 In `web/router.ex` we want to add a new `GET` route to our list of routes:
 
 ```elixir
@@ -161,22 +167,20 @@ We now need to add a drafts function in our `PostController`
   end
 ```
 
-The only difference between our new `draft` function and the `index` function is the `query`. Check out the query docs [here](https://hexdocs.pm/ecto/Ecto.Query.html). We use this to filter the database for all posts where draft is true. Go to the endpoint `/posts/drafts` to see this new view.
+The only difference between our new `draft` function and the `index` function that is already there is the `query`. Check out the query docs [here](https://hexdocs.pm/ecto/Ecto.Query.html). We use this to query the database and get all posts where draft is true. Go to the endpoint `/posts/drafts` to see this new view.
 
-TLDR
+## TLDR
 
-mix phoenix.new blog
-cd blog
-mix ecto.create
-mix phoenix.gen.html Post posts title:string body:text
-add routes to router.ex file (resources "/posts", PostController)
-mix ecto.migrate (generates the table)
-mix phoenix.server
-mix ecto.gen.migration add_drafts_to_posts (notice new file in priv/rep/migrations )
-mix ecto.migrate
-edit /web/models/post.ex (add draft to schema and to validate function)
-add the new column to table in above file. See these docs: https://hexdocs.pm/ecto/Ecto.Migration.html#add/3
-
-add the draft header to /web/templates/show.html
-add the draft to /web/templates/index.html
-stopped at 8.30
++ `mix phoenix.new blog`
++ `cd blog`
++ `mix ecto.create`
++ `mix phoenix.gen.html Post posts title:string body:text`
++ add route to `router.ex` file (`resources "/posts", PostController`)
++ `mix ecto.migrate` (generates the table)
++ add draft functionality to `/web/templates/post/form.html`
++ update `schema` and `changeset` function in `web/models/post.ex`
++ `mix ecto.gen.migration add_drafts_to_posts` (notice new file in `priv/rep/migrations` )
++ update `change` function in `priv/rep/migrations`
++ `mix ecto.migrate`
++ add the draft header to `/web/templates/show.html`
++ add the draft to `/web/templates/index.html`
